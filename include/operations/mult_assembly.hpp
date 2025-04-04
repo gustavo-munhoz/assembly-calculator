@@ -7,6 +7,6 @@
 
 #include <string>
 
-std::string generateMultAssembly();
+std::string generateMulAssembly();
 
 #endif //PROJ1_MULT_ASSEMBLY_HPP

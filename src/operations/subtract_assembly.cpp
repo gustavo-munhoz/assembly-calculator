@@ -5,13 +5,20 @@
 #include <string>
 #include<sstream>
 
+/// Cria o código em assembly para fazer a operação de subtração
+/// de números float 16 bits no formato IEEE754.
 std::string generateSubAssembly() {
     std::stringstream ss;
-
-    ss << "; int_sub: Subtrai dois números inteiros de 16 bits.\n";
-    ss << "int_sub:\n";
-    ss << "    sub r24, r22\n";
-    ss << "    sub r25, r23\n";
+    ss << ";-----------------------------------------------------\n";
+    ss << "; sub_f16: Subtração de dois half-precision IEEE-754\n";
+    ss << "; Entradas: Operando A em R25:R24, Operando B em R23:R22\n";
+    ss << "; Saída: Resultado em R25:R24\n";
+    ss << ";-----------------------------------------------------\n\n";
+    ss << "sub_f16:\n";
+    ss << "    ldi R16, 0x80\n";
+    ss << "    eor R23, R16\n";
+    ss << "    \n";
+    ss << "    rcall add_f16\n";
     ss << "    ret\n";
 
     return ss.str();

@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 
+/// Cria o código em assembly para fazer a operação de salvar um valor na memória.
 std::string generateValueMemAssembly() {
     std::stringstream ss;
     ss << ";-----------------------------------------------------\n";
@@ -17,6 +18,7 @@ std::string generateValueMemAssembly() {
     return ss.str();
 }
 
+/// Cria o código em assembly para fazer a operação de retornar um valor salvo na memória.
 std::string generateMemAssembly() {
     std::stringstream ss;
     ss << ";-----------------------------------------------------\n";

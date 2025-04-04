@@ -5,6 +5,8 @@
 #include <string>
 #include <sstream>
 
+/// Cria o código em assembly para fazer a operação de acessar o resultado de
+/// N linhas anteriores, a partir da linha em que esse comando é executado.
 std::string generateResAssembly() {
     std::stringstream ss;
     ss << ";-----------------------------------------------------\n";
@@ -12,7 +14,7 @@ std::string generateResAssembly() {
     ss << "; Entrada:\n";
     ss << ";   r24 = índice N (número de linhas anteriores)\n";
     ss << "; Saída:\n";
-    ss << ";   r24:r25 = resultado (16 bits) armazenado em 'results' na posição (N*2)\n";
+    ss << ";   r24:r25 = resultado armazenado em 'results' na posição (N*2)\n";
     ss << ";-----------------------------------------------------\n";
     ss << "\n";
     ss << "res_op:\n";

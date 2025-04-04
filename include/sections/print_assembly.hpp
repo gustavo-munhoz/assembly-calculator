@@ -7,7 +7,6 @@
 
 #include <string>
 
-std::string generatePrint16Assembly();
-std::string generatePrint16DivisorAssembly();
+std::string generatePrintF16Assembly();
 
 #endif //PROJ1_PRINT_ASSEMBLY_HPP

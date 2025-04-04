@@ -8,9 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(
     proj1
     src/main.cpp
-    src/assembly_generator.cpp
-        include/dsegManager.hpp
-        src/dsegManager.cpp
+        src/generator/assembly_generator.cpp
         src/sections/config_assembly.cpp
         src/sections/serial_comm_assembly.cpp
         src/sections/print_assembly.cpp
@@ -31,4 +29,14 @@ add_executable(
         src/operations/res_assembly.cpp
         include/operations/mem_assembly.hpp
         src/operations/mem_assembly.cpp
+        include/operations/real_division_assembly.hpp
+        src/operations/real_division_assembly.cpp
+        include/operations/mod_assembly.hpp
+        src/operations/mod_assembly.cpp
+        src/generator/parse_helpers.cpp
+        src/generator/temp_var_manager.cpp
+        include/generator/parse_helpers.hpp
+        include/generator/expression_parser.hpp
+        src/generator/expression_parser.cpp
+        include/generator/temp_var_manager.hpp
 )

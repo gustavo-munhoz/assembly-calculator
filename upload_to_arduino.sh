@@ -13,8 +13,10 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+BASE_NAME="${INPUT_FILE%.*}"
 ASM_FILE="${INPUT_FILE%.*}.asm"
 HEX_FILE="${INPUT_FILE%.*}.hex"
+EXPECTED_RESULTS_FILE="${BASE_NAME}_expected.txt"
 
 echo "Assembly generated."
 echo "Assembling using avra to generate HEX: $HEX_FILE"
@@ -42,3 +44,18 @@ echo "Cleaning build files..."
 rm "${INPUT_FILE%.*}.obj" "${INPUT_FILE%.*}.eep.hex" "$HEX_FILE" 
 
 echo "Done!"
+
+echo "----------------------------------"
+
+if [ -f "$EXPECTED_RESULTS_FILE" ]; then
+	echo "Expected results:"
+	cat "$EXPECTED_RESULTS_FILE"
+	echo ""
+else
+	echo "Expected results file not found ($EXPECTED_RESULTS_FILE)."
+	echo "Skipping display of expected results."
+fi
+
+echo "----------------------------------"
+
+exit 0

@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 
+/// Cria o código em assembly para fazer a transmissão de um caractere pelo monitor serial.
 std::string generateSerialCommAssembly() {
     std::stringstream ss;
     ss << "; Rotina para transmitir um caractere via Serial.\n";

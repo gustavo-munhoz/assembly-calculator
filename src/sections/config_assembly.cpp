@@ -5,6 +5,8 @@
 #include <sstream>
 #include <string>
 
+/// Cria o código em assembly de configuração da USART do processador atmega328p
+/// (baud rate, frequência de clock, etc).
 std::string generateConfigAssembly() {
     std::stringstream ss;
     ss << "; Configuração da USART\n";
