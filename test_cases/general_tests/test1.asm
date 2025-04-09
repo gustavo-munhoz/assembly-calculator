@@ -94,13 +94,14 @@ tx_R16_aguarda:
     sts     UDR0, R16
     ret
 
+;---------------------------------------------------------
 ; add_f16: Adição de dois half-precision IEEE-754
 ; Entradas: Operando A em R25:R24, Operando B em R23:R22
 ; Saída: Resultado em R25:R24
-; Salva/Restaura: r18, r19, r20, r21, r26, r27, r30 (Todos Callee-Saved)
-; Usa/Modifica (Volatile): r2, r16, r17, r28, r29
+; Callee-Saved: r18, r19, r20, r21, r26, r27, r30
+; Volatile: r2, r16, r17, r28, r29
+;---------------------------------------------------------
 add_f16:
-    ; --- Salvar registradores Callee-Saved ---
     push R18
     push R19
     push R20
@@ -108,7 +109,7 @@ add_f16:
     push R26
     push R27
     push R30
-    ; Extrair Sinais (0x00 ou 0x80) -> r28, r29 (Volatile)
+    ; Extrair Sinais -> r28, r29 (Volatile)
     mov R28, R25
     andi R28, 0x80
     mov R29, R23
@@ -124,7 +125,7 @@ add_f16:
     lsr R27
     lsr R27
 
-    ; Extrair Mantissas (com bit implícito) -> r19:r18(A), r17:r16(B)
+    ; Extrair Mantissas -> r19:r18(A), r17:r16(B)
     mov R18, R24
     mov R19, R25
     andi R19, 0x03
@@ -147,7 +148,6 @@ add_extract_b:
 add_norm_b:
     ori R17, 0x04
 align_mantissas_start:
-    ; Alinhar Mantissas
     cp R26, R27
     brsh exp_a_ge_b
     ; Expoente B > A, deslocar A à direita
@@ -183,7 +183,7 @@ align_done:
     cp R28, R29
     breq same_signs
 
-    ; --- Sinais Diferentes (Subtração) ---
+    ; --- Sinais Diferentes ---
     mov R20, R19        ; Guardar cópia de r19:r18 para comparação
     cp R19, R17
     brne mantissa_cmp_decided
@@ -193,7 +193,7 @@ align_done:
     clr R18
     clr R19
     clr R30
-    clr r21             ; +0 para resultado
+    clr r21
     rjmp pack_result
 
 mantissa_cmp_decided:
@@ -218,10 +218,10 @@ same_signs:
     ; --- Sinais Iguais (Adição) ---
     add R18, R16
     adc R19, R17
-    mov r21, R28        ; Sinal comum
+    mov r21, R28
     rjmp normalize_check_add
 
-normalize_check_add: ; Ponto de entrada APÓS ADIÇÃO de sinais iguais
+normalize_check_add:
     ; Verificar se resultado é zero
     mov R16, R19
     or R16, R18
@@ -234,7 +234,7 @@ check_add_overflow:
     rjmp adjust_add_overflow
     rjmp add_normalize_loop_entry
 
-normalize_after_sub: ; Ponto de entrada APÓS SUBTRAÇÃO de sinais diferentes
+normalize_after_sub:
     ; Verificar se resultado é zero
     mov R16, R19
     or R16, R18
@@ -243,7 +243,7 @@ normalize_after_sub: ; Ponto de entrada APÓS SUBTRAÇÃO de sinais diferentes
     clr r21             ; Zero positivo
     rjmp pack_result
 
-add_normalize_loop_entry: ; Ponto de entrada comum para shift esquerda
+add_normalize_loop_entry:
     ; Normalizar resultado (bit implícito em R19 bit 2)
 add_normalize_loop:
     sbrc R19, 2         ; Verificar se bit implícito está em posição
@@ -264,7 +264,6 @@ handle_denormalized:
     rjmp pack_result
 
 adjust_add_overflow:
-    ; Overflow na adição, deslocar mantissa à direita
     lsr R19
     ror R18
     inc R30
@@ -274,15 +273,12 @@ normalize_done:
     rjmp pack_result
 
 handle_overflow:
-    ; Overflow de expoente, retornar infinito
     ldi R19, 0x00
     ldi R18, 0x00
     ldi R30, 31
     rjmp pack_result
 
 pack_result:
-    ; --- Empacotar Resultado Final --- 
-    ; Montar expoente em R16
     mov R16, R30
     lsl R16
     lsl R16
@@ -293,10 +289,8 @@ pack_result:
     andi R16, 0x03      ; Bits 1-0 da mantissa alta
     or R25, R16         ; Combinar expoente com mantissa alta
     or R25, r21         ; Aplicar bit de sinal
-    ; Byte baixo do resultado é a mantissa baixa
     mov R24, R18
 add_cleanup:
-    ; --- Restaurar registradores Callee-Saved ---
     pop R30
     pop R27
     pop R26
@@ -319,13 +313,14 @@ sub_f16:
     rcall add_f16
     ret
 
-; mul_f16: Multiplicação de dois half-precision IEEE-754 (Stack Otimizado)
+;---------------------------------------------------------
+; mul_f16: Multiplicação de dois half-precision IEEE-754
 ; Entradas: Operando A em R25:R24, Operando B em R23:R22
 ; Saída: Resultado em R25:R24
-; Salva/Restaura: r18-r21, r26-r27, r30-r31 (Callee-Saved)
-; Usa/Modifica (Volatile): r0, r1, r16, r17, r28, r29
+; Callee-Saved: r18-r21, r26-r27, r30-r31
+; Volatile: r0, r1, r16, r17, r28, r29
+;---------------------------------------------------------
 mul_f16:
-; --- Salvar Registradores Callee-Saved Modificados ---
     push r18
     push r19
     push r20
@@ -402,11 +397,10 @@ norm_b:
     ori R17, 0x04
 
 calc_exp:
-    ; --- Calcular Expoente Resultado Provisório ---
     add R26, R27
     subi R26, 15
 
-    ; --- Multiplicar Mantissas (16x16 -> 32 bits) ---
+    ; --- Multiplicar Mantissas (32 bits) ---
     clr R28
     clr R29
     clr R30
@@ -428,7 +422,6 @@ calc_exp:
     add R30, r0
     adc R31, r1
 
-    ; --- Ajustar Overflow da Mantissa --- 
     sbrc r30, 5
     rjmp mul_did_overflow
 mul_no_overflow:
@@ -441,7 +434,6 @@ mul_did_overflow:
     inc r26
 mantissa_ready:
 
-    ; --- Checar Limites Finais do Expoente --- 
 mul_check_exponent:
     mov r19, r28
     or  r19, r29
@@ -466,7 +458,6 @@ exponent_overflow_final:
     or R25, R20
     rjmp mul_cleanup
 
-    ; --- Empacotar Resultado Final --- 
 pack_result_new:
     mov R25, R20
     mov R21, R26
@@ -495,7 +486,6 @@ pack_result_new:
     or R24, R21
 
 mul_cleanup:
-    ; --- Restaurar Registradores Callee-Saved Modificados ---
     pop r31
     pop r30
     pop r27
@@ -506,15 +496,16 @@ mul_cleanup:
     pop r18
     ret
 
-; div_f16: Divisão em ponto flutuante IEEE 754 half-precision (16-bit)
+;-----------------------------------------------------
+; div_f16: Divisão em ponto flutuante IEEE 754 de 16 bits
 ; Entrada:
-;   r25:r24 = dividendo (16 bits float)
-;   r23:r22 = divisor   (16 bits float)
+;   r25:r24 = dividendo
+;   r23:r22 = divisor
 ; Saída:
-;   r25:r24 = resultado (16 bits float)
-; Registradores usados internamente: r0, r1, r2, r3, r16-r21
+;   r25:r24 = resultado
+; Registradores usados: r0, r1, r2, r3, r16-r21
+;-----------------------------------------------------
 div_f16:
-    ; Salvar registradores que serão modificados (exceto os de resultado r24, r25)
     push r0
     push r1
     push r2
@@ -584,8 +575,6 @@ dividend_not_zero:
     ori  r19, 0x04
     mov  r3, r19
     mov  r2, r22
-    ; --- NOVO LOOP DE DIVISÃO (16 iterações) --- 
-    ; Algoritmo: Restauração, compara R vs D, subtrai se R>=D, shift Q, shift R 
     clr  r16            ; Limpar registrador baixo do quociente
     clr  r17            ; Limpar registrador alto do quociente
     ldi  r19, 16        ; Contador de iterações (16 para quociente de 16 bits)
@@ -702,15 +691,16 @@ div_f16_end:
     pop r0
     ret
 
-; div_int_f16: Divisão 'inteira' (truncada) de float16 (Stack Otimizado)
+;-----------------------------------------------------
+; div_int_f16: Divisão inteira de float16
 ; Entrada A: r25:r24 (float16)
 ; Entrada B: r23:r22 (float16)
 ; Saida:     r25:r24 = float16(trunc(A/B))
-; Salva/Restaura: r18, r20, r21, r26, r27 (Callee-Saved)
-; Usa/Modifica (Volatile): r16, r17
-; Chama:     div_f16 (Assume clobber r0-r3, r16, r17)
+; Callee-Saved: r18, r20, r21, r26, r27
+; Volatile: r16, r17
+; Chama: div_f16
+;-----------------------------------------------------
 div_int_f16:
-    ; --- Salvar Registradores Callee-Saved Modificados ---
     push r18
     push r20
     push r21
@@ -718,14 +708,13 @@ div_int_f16:
     push r27
 
     ; 1. Chamar divisão float normal A/B
-    ; #warning Assumindo que div_f16 existe e preserva r18,r20,r21,r26,r27!
     call div_f16         ; Resultado R em r25:r24
 
     ; 2. Salvar sinal do resultado R -> r20
     mov r20, r25
     andi r20, 0x80       ; r20 = Sinal de R
 
-    ; 3. Checar se resultado R é Zero (usa r16, r17 Volatile)
+    ; 3. Checar se resultado R é Zero
     mov r16, r24         ; Byte baixo de R
     mov r17, r25
     andi r17, 0x7F       ; Byte alto de R sem sinal
@@ -801,7 +790,6 @@ apply_mask_r25_final:
 mask_r25_done:
     ; O resultado truncado está em r25:r24
 div_int_cleanup:
-    ; --- Restaurar Registradores Callee-Saved Modificados ---
     pop r27
     pop r26
     pop r21
@@ -809,13 +797,14 @@ div_int_cleanup:
     pop r18
     ret
 
-; mod_f16: Resto da divisão de float16 (A % B ~ fmod(A, B))
+;-----------------------------------------------------
+; mod_f16: Resto da divisão de float16
 ; Entrada A: r25:r24
 ; Entrada B: r23:r22
 ; Saida:     r25:r24 = A % B = A - trunc(A/B) * B
 ; Usa:       Registradores conforme funções chamadas.
 ; Chama:     div_int_f16, mul_f16, sub_f16
-; NOTA:      Requer que as rotinas div_int_f16, mul_f16, e sub_f16 (com add_f16 corrigida) existam!
+;-----------------------------------------------------
 mod_f16:
     ; --- Salvar Registradores ---
     push r0
@@ -840,7 +829,6 @@ mod_f16:
     andi r17, 0x7F       ; Limpar bit de sinal de B high
     or r16, r17          ; Checar se magnitude é zero
     brne mod_b_not_zero  ; Pular se B != 0
-    ; Divisão por Zero - Retornar NaN silencioso
     ldi r25, 0x7E
     ldi r24, 0x00
     rjmp mod_cleanup     ; Pular para restauração e ret
@@ -852,7 +840,7 @@ mod_b_not_zero:
     push r23 ; Salvar B high
     push r22 ; Salvar B low
     ; --- Passo 1: Calcular i = trunc(A / B) --- 
-    call div_int_f16     ; i (float16) fica em r25:r24
+    call div_int_f16
 
     ; Guardar 'i' na pilha
     push r25
@@ -872,7 +860,7 @@ mod_b_not_zero:
     pop r25              ; Pop A high original para r25
     pop r22              ; Pop P low para r22
     pop r23              ; Pop P high para r23
-    call sub_f16         ; R' (resultado com sinal possivelmente invertido) fica em r25:r24
+    call sub_f16
 
     ; Checar se R' (r25:r24) tem magnitude zero
     mov r16, r24         ; R' low
@@ -880,7 +868,7 @@ mod_b_not_zero:
     andi r17, 0x7F       ; Ignorar sinal de R'
     or r16, r17          ; r16 == 0 se magnitude zero
     brne mod_flip_sign   ; Pular para inverter se não for zero
-    ; Magnitude é zero, não fazer nada (sinal já deve estar correto vindo de add_f16)
+    ; Magnitude é zero, não fazer nada
     rjmp mod_sign_done
 mod_flip_sign:
     ; Resultado R' não é zero, inverter seu bit de sinal
@@ -889,7 +877,6 @@ mod_flip_sign:
 mod_sign_done:
     ; O resultado final R (com sinal correto) está em r25:r24
 mod_cleanup:
-    ; --- Restaurar Registradores ---
     pop r31
     pop r30
     pop r29
@@ -908,14 +895,15 @@ mod_cleanup:
     pop r0
     ret
 
+;-----------------------------------------------------
 ; pow_f16: Potência A^B, onde B é float16 representando int >= 1
 ; Entrada Base A: r25:r24
 ; Entrada Expo B: r23:r22
 ; Saida: r25:r24 = A^B
 ; Usa: r0,r1,r2,r16-r23,r26-r31
 ; Chama: f16_to_uint16, mul_f16
+;-----------------------------------------------------
 pow_f16:
-    ; --- Salvar Registradores --- 
     push r0
     push r1
     push r2
@@ -935,7 +923,6 @@ pow_f16:
     push r30
     push r31
     ; --- Converter Expoente B (float) para uint16 --- 
-    ; #warning Assumindo que f16_to_uint16 existe e clobbers r16-r19!
     call f16_to_uint16   ; Entrada r23:r22, Saída b_int em r27:r26
 
     ; --- Salvar Base A (CurrentPower) e Inicializar Result --- 
@@ -989,9 +976,6 @@ pow_square_base_prep:
 ; Saida: Novo Result(r25:r24)
 ; Clobbers: r22, r23, e regs usados por mul_f16
 pow_mult_result:
-    ; Salvar CP na pilha (pois mul_f16 usa r20-r21 internamente e os salva/restaura)
-    ; Ou melhor: apenas configurar entradas e chamar mul_f16
-    ; Mover CurrentPower (r20:r21) para entrada B (r23:r22)
     mov r23, r20
     mov r22, r21
     ; Result (r25:r24) já está na entrada A
@@ -1001,7 +985,6 @@ pow_mult_result:
 pow_loop_end:
     ; O resultado final está em r25:r24
 pow_cleanup:
-    ; --- Restaurar Registradores ---
     pop r31
     pop r30
     pop r29
@@ -1021,14 +1004,13 @@ pow_cleanup:
     pop r1
     pop r0
     ret
-
-; --- f16_to_uint16 --- 
-; Converte float16 (representando int positivo >= 1) para uint16_t
+;-----------------------------------------------------
+; f16_to_uint16: Converte float16 para uint16_t
 ; Entrada: r23:r22 (float16)
 ; Saída:   r27:r26 (uint16_t)
 ; Modifica: r16, r17, r18, r19
+;-----------------------------------------------------
 f16_to_uint16:
-    ; Extrair expoente com bias Exp (>=15 pois entrada >= 1.0)
     mov r18, r23        ; Byte alto de B
     andi r18, 0x7C      ; Isolar bits do expoente
     lsr r18
@@ -1083,7 +1065,7 @@ f16tu16_done:
 ; Entrada:
 ;   r24 = índice N (número de linhas anteriores)
 ; Saída:
-;   r24:r25 = resultado (16 bits) armazenado em 'results' na posição (N*2)
+;   r24:r25 = resultado armazenado em 'results' na posição (N*2)
 ;-----------------------------------------------------
 
 res_op:
@@ -1546,8 +1528,8 @@ T38_L: .byte 1
 T38_H: .byte 1
 
 results: .byte 36
-.equ lo8_results = ((results) & 0xFF)
-.equ hi8_results = (((results) >> 8) & 0xFF)
+    .equ lo8_results = ((results) & 0xFF)
+    .equ hi8_results = (((results) >> 8) & 0xFF)
 storeVal: .byte 2
-.equ BUFFER_ADDR = 0x100
-.equ BUFFER_SIZE = 11
+    .equ BUFFER_ADDR = 0x100
+    .equ BUFFER_SIZE = 11
